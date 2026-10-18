@@ -24,13 +24,13 @@ arrêts, via l'[API open data Ginko](https://api.ginko.voyage/).
     - alias: "Bus dans moins de 10 minutes"
       trigger:
         - platform: numeric_state
-          entity_id: sensor.ligne_42_exemple_mairie_passage_exemple_mairie_aller
+          entity_id: sensor.ligne_42_exempleville_exemple_ouest_passage_exemple_mairie_aller
           below: 10
       condition:
         # Ne pas alerter sur une estimation théorique (véhicule non localisé).
         - condition: template
           value_template: >-
-            {{ is_state_attr('sensor.ligne_42_exemple_mairie_passage_exemple_mairie_aller',
+            {{ is_state_attr('sensor.ligne_42_exempleville_exemple_ouest_passage_exemple_mairie_aller',
             'temps_reel', true) }}
       action:
         - service: notify.mobile_app
