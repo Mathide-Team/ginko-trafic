@@ -1,0 +1,7 @@
+{
+  "ok": true,
+  "objets": [
+    {"idLigne": "901", "numLignePublic": "T9", "couleurFond": "00A5C2", "couleurTexte": "FFFFFF", "etat": 5},
+    {"idLigne": "902", "numLignePublic": "42", "couleurFond": "9C27B0", "couleurTexte": "FFFFFF", "etat": 1}
+  ]
+}

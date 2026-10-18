@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "objets": [
+    {
+      "id": 71,
+      "titre": "Travaux voie tram",
+      "texte": "<p>Déviation par Exemple Marche jusqu'au 30 octobre.</p>",
+      "url": "https://exemple.invalid/info/71",
+      "etat": 5,
+      "idEvenement": 12,
+      "lignes": ["T9"],
+      "arrets": [],
+      "supports": [3]
+    },
+    {
+      "id": 72,
+      "titre": "Nouvelles bornes",
+      "texte": "<p>De nouvelles bornes d'information arrivent.</p>",
+      "url": "",
+      "etat": 2,
+      "idEvenement": 13,
+      "lignes": ["42"],
+      "arrets": [],
+      "supports": [3]
+    }
+  ]
+}

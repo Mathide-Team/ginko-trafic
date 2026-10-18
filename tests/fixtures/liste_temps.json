@@ -1,0 +1,23 @@
+{
+  "ok": true,
+  "objets": [
+    {
+      "nomExact": "Exemple Mairie",
+      "latitude": 47.1,
+      "longitude": 6.1,
+      "listeTemps": [
+        {"idArret": "A1", "idLigne": "901", "numLignePublic": "T9", "sensAller": true, "destination": "Exemple Sud", "precisionDestination": "", "temps": "3 min", "tempsEnSeconde": 180, "typeDeTemps": 0, "fiable": true, "numVehicule": "207", "affluence": 0, "idInfoTrafic": 0, "quai": "Quai A"},
+        {"idArret": "A1", "idLigne": "901", "numLignePublic": "T9", "sensAller": true, "destination": "Exemple Sud", "precisionDestination": "", "temps": "8 min", "tempsEnSeconde": 480, "typeDeTemps": 0, "fiable": false, "numVehicule": "208", "affluence": 1, "idInfoTrafic": 0, "quai": ""},
+        {"idArret": "A1", "idLigne": "902", "numLignePublic": "42", "sensAller": true, "destination": "Exemple Ouest", "precisionDestination": "Par Exemple Marche", "temps": "17h05", "tempsEnSeconde": 3900, "typeDeTemps": 1, "fiable": false, "numVehicule": "42", "affluence": -1, "idInfoTrafic": 0, "quai": ""}
+      ]
+    },
+    {
+      "nomExact": "Exemple Nord Terminus",
+      "latitude": 47.12,
+      "longitude": 6.12,
+      "listeTemps": [
+        {"idArret": "A3", "idLigne": "901", "numLignePublic": "T9", "sensAller": false, "destination": "Exemple Nord", "precisionDestination": "", "temps": "Travaux", "tempsEnSeconde": null, "typeDeTemps": 2, "fiable": false, "numVehicule": "", "affluence": -1, "idInfoTrafic": 71, "quai": ""}
+      ]
+    }
+  ]
+}

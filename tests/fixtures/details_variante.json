@@ -1,0 +1,7 @@
+{
+  "ok": true,
+  "objets": [
+    {"id": "A1", "nom": "Exemple Mairie", "latitude": 47.1, "longitude": 6.1},
+    {"id": "A3", "nom": "Exemple Nord Terminus", "latitude": 47.12, "longitude": 6.12}
+  ]
+}

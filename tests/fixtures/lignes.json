@@ -1,0 +1,31 @@
+{
+  "ok": true,
+  "objets": [
+    {
+      "id": "901",
+      "numLignePublic": "T9",
+      "libellePublic": "Exemple Nord <> Exemple Sud",
+      "modeTransport": 1,
+      "typologie": 10,
+      "couleurFond": "00A5C2",
+      "couleurTexte": "FFFFFF",
+      "variantes": [
+        {"id": "901-0", "sensAller": true, "destination": "Exemple Sud", "precisionDestination": ""},
+        {"id": "901-1", "sensAller": false, "destination": "Exemple Nord", "precisionDestination": ""}
+      ]
+    },
+    {
+      "id": "902",
+      "numLignePublic": "42",
+      "libellePublic": "Exempleville <> Exemple Ouest",
+      "modeTransport": 0,
+      "typologie": 30,
+      "couleurFond": "9C27B0",
+      "couleurTexte": "FFFFFF",
+      "variantes": [
+        {"id": "902-0", "sensAller": true, "destination": "Exemple Ouest", "precisionDestination": "Par Exemple Marche"},
+        {"id": "902-1", "sensAller": false, "destination": "Exempleville", "precisionDestination": ""}
+      ]
+    }
+  ]
+}

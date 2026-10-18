@@ -1,0 +1,67 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "Suivi du réseau Ginko (Besançon) via l'API open data. La clé API est gratuite : demandez-la par courriel à ginko.support-ssi@keolis.com.",
+        "data": {
+          "cle_api": "Clé API Ginko"
+        }
+      },
+      "lignes": {
+        "description": "Choisissez les lignes à suivre pour les perturbations (infos trafic). Vous pourrez ajouter des abonnements de temps d'attente arrêt par arrêt dans les options.",
+        "data": {
+          "lignes": "Lignes suivies"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossible de joindre l'API Ginko.",
+      "cle_invalide": "Clé refusée par l'API Ginko : vérifiez-la."
+    },
+    "abort": {
+      "already_configured": "Le réseau Ginko est déjà configuré."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Lignes suivies et abonnements de temps d'attente. Désélectionnez un abonnement pour le supprimer ; cochez « Ajouter un abonnement » pour en créer un nouveau.",
+        "data": {
+          "lignes": "Lignes suivies",
+          "abonnements": "Abonnements existants",
+          "ajouter": "Ajouter un abonnement"
+        }
+      },
+      "abonnement_ligne": {
+        "description": "Nouvel abonnement — étape 1/3 : la ligne.",
+        "data": {
+          "ligne": "Ligne"
+        }
+      },
+      "abonnement_sens": {
+        "description": "Nouvel abonnement — étape 2/3 : le sens de circulation.",
+        "data": {
+          "sens": "Sens (destination)"
+        }
+      },
+      "abonnement_arret": {
+        "description": "Nouvel abonnement — étape 3/3 : l'arrêt.",
+        "data": {
+          "arret": "Arrêt"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossible de joindre l'API Ginko.",
+      "lignes_indisponibles": "Lignes indisponibles : réessayez plus tard."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "perturbation": {
+        "name": "Perturbation"
+      }
+    },
+    "sensor": {}
+  }
+}

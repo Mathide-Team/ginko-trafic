@@ -1,0 +1,14 @@
+{
+  "ok": true,
+  "objets": [
+    {
+      "nomExact": "Exemple Zero",
+      "latitude": 47.2,
+      "longitude": 6.2,
+      "listeTemps": [
+        {"idArret": "Z1", "idLigne": "901", "numLignePublic": "T9", "sensAller": true, "destination": "Exemple Sud Prochaine", "precisionDestination": "", "temps": "8 min", "tempsEnSeconde": 480, "typeDeTemps": 0, "fiable": false, "numVehicule": "210", "affluence": 1, "idInfoTrafic": 0, "quai": ""},
+        {"idArret": "Z1", "idLigne": "901", "numLignePublic": "T9", "sensAller": true, "destination": "Exemple Sud", "precisionDestination": "", "temps": "à l'arrêt", "tempsEnSeconde": 0, "typeDeTemps": 0, "fiable": true, "numVehicule": "209", "affluence": 0, "idInfoTrafic": 0, "quai": "Quai B"}
+      ]
+    }
+  ]
+}

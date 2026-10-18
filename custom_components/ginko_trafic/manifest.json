@@ -1,0 +1,12 @@
+{
+  "domain": "ginko_trafic",
+  "name": "Ginko trafic",
+  "codeowners": ["@MathildeDec"],
+  "config_flow": true,
+  "documentation": "https://github.com/Mathide-Team/ginko-trafic",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/Mathide-Team/ginko-trafic/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}
