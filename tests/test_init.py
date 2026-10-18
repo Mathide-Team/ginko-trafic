@@ -221,10 +221,7 @@ async def test_passage_texte_et_horaire(hass: HomeAssistant, client: TestClient)
     assert horaire.state == "65"  # 3900 secondes
     assert horaire.attributes["temps_reel"] is False  # estimation théorique
     # Identifiant complet documenté dans le README (exemple ligne 42).
-    assert (
-        horaire.entity_id
-        == "sensor.ligne_42_exempleville_exemple_ouest_passage_exemple_mairie_aller"
-    )
+    assert horaire.entity_id == "sensor.ligne_42_exempleville_exemple_ouest_passage_exemple_mairie_aller"
 
 
 async def test_aucun_passage(hass: HomeAssistant, client: TestClient) -> None:
