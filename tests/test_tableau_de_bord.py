@@ -58,6 +58,10 @@ async def test_rendu_avec_abonnement(hass: HomeAssistant, client: TestClient) ->
     assert "Exemple Mairie" in passages
     assert "**3 min**" in passages
     assert "Exemple Sud" in passages
+    lignes = [ligne for ligne in passages.splitlines() if ligne.startswith("|")]
+    # En-tête, séparateur, une ligne par abonnement : tableau Markdown valide.
+    assert len(lignes) == 3
+    assert all(ligne.count("|") == 6 for ligne in lignes)
     trafic = _rendre(hass, cartes["Info trafic"]["content"])
     assert "perturbation en cours" in trafic
     assert "normale" in trafic
@@ -67,6 +71,10 @@ async def test_rendu_avec_abonnement(hass: HomeAssistant, client: TestClient) ->
     bandeau = _rendre(hass, conditionnelle["card"]["content"])
     assert "1 ligne perturbée" in bandeau
     assert "Travaux voie tram" in bandeau
+    # Chaque message sur sa propre ligne de liste.
+    assert any(ligne.startswith("- ") and "Travaux voie tram" in ligne for ligne in bandeau.splitlines())
+    # Une ligne par ligne de transport dans l'info trafic.
+    assert len([ligne for ligne in trafic.splitlines() if "mdi:" in ligne]) == 2
 
 
 async def test_rendu_sans_abonnement(hass: HomeAssistant, client: TestClient) -> None:

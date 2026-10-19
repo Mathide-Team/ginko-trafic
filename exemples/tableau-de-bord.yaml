@@ -21,56 +21,45 @@ cards:
              | select('is_state', 'on') | list | count > 0 }}
     card:
       type: markdown
-      content: >-
+      content: |-
         {%- set perturbees = integration_entities('ginko_trafic')
             | select('match', 'binary_sensor[.]') | select('is_state', 'on') | list -%}
         ## <ha-icon icon="mdi:alert"></ha-icon> {{ perturbees | count }} ligne{{ 's' if perturbees | count > 1 }} perturbée{{ 's' if perturbees | count > 1 }}
-        {% for e in perturbees -%}
-        **{{ device_attr(e, 'name') or state_attr(e, 'friendly_name') }}** :
-        {{ state_attr(e, 'etat') }}
-        {% for m in state_attr(e, 'messages') or [] %}
+        {% for e in perturbees %}
+        **{{ device_attr(e, 'name') or state_attr(e, 'friendly_name') }}** : {{ state_attr(e, 'etat') }}
+        {% for m in state_attr(e, 'messages') or [] -%}
         - {{ m }}
-        {%- endfor %}
-
+        {% endfor %}
         {% endfor -%}
 
   - type: markdown
     title: Prochains passages
-    content: >-
+    content: |-
       {%- set capteurs = integration_entities('ginko_trafic') | select('match', 'sensor[.]') | list -%}
       {%- if capteurs | count == 0 -%}
-      Aucun abonnement : ajoutez-en dans les options de l'intégration
-      (ligne → sens → arrêt).
+      Aucun abonnement : ajoutez-en dans les options de l'intégration (ligne → sens → arrêt).
       {%- else -%}
       | Ligne | Arrêt | Direction | Attente | Suivants |
       |:--|:--|:--|--:|:--|
       {% for e in capteurs | sort(attribute='entity_id') -%}
       {%- set attente = states(e) -%}
       {%- set reel = state_attr(e, 'temps_reel') -%}
-      | {{ device_attr(e, 'name') or '' }}
-      | {{ state_attr(e, 'arret') or '' }}
-      | {{ state_attr(e, 'destination') or '—' }}
-      | {% if attente not in ['unknown', 'unavailable'] %}**{{ attente }} min**{{ '' if reel else ' (théorique)' }}{% else %}{{ state_attr(e, 'horaire_affiche') or '—' }}{% endif %}
-      | {{ (state_attr(e, 'prochains_passages') or [])[1:4] | join(', ') }} |
+      | {{ device_attr(e, 'name') or '' }} | {{ state_attr(e, 'arret') or '' }} | {{ state_attr(e, 'destination') or '—' }} | {% if attente not in ['unknown', 'unavailable'] %}**{{ attente }} min**{{ '' if reel else ' (théorique)' }}{% else %}{{ state_attr(e, 'horaire_affiche') or '—' }}{% endif %} | {{ (state_attr(e, 'prochains_passages') or [])[1:4] | join(', ') }} |
       {% endfor %}
-
       {%- endif %}
 
   - type: markdown
     title: Info trafic
-    content: >-
+    content: |-
       {%- set lignes = integration_entities('ginko_trafic') | select('match', 'binary_sensor[.]') | list -%}
       {%- if lignes | count == 0 -%}
       Aucune ligne suivie.
       {%- else -%}
       {% for e in lignes | sort(attribute='entity_id') -%}
-      <ha-icon icon="{{ 'mdi:alert-circle' if is_state(e, 'on') else 'mdi:check-circle' }}"></ha-icon>
-      **{{ device_attr(e, 'name') or state_attr(e, 'friendly_name') }}** :
-      {{ state_attr(e, 'etat') or 'inconnu' }}
+      <ha-icon icon="{{ 'mdi:alert-circle' if is_state(e, 'on') else 'mdi:check-circle' }}"></ha-icon> **{{ device_attr(e, 'name') or state_attr(e, 'friendly_name') }}** : {{ state_attr(e, 'etat') or 'inconnu' }}
       {% endfor -%}
       {%- endif %}
 
   - type: markdown
-    content: >-
-      Données [Ginko](https://www.ginko.voyage) sous licence ODbL
-      (Keolis Besançon Mobilités / Grand Besançon Métropole).
+    content: |-
+      Données [Ginko](https://www.ginko.voyage) sous licence ODbL (Keolis Besançon Mobilités / Grand Besançon Métropole).
