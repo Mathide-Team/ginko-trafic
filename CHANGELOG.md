@@ -1,6 +1,6 @@
 # Journal des versions
 
-## 0.1.0 — 18/10/2026
+## [0.1.0] — 18/10/2026
 
 - Version initiale : infos trafic et temps d'attente du réseau Ginko
   (Besançon) via l'API open data (clé gratuite requise).

@@ -34,6 +34,11 @@ jobs:
       - name: Syntaxe des scripts Python
         run: uv run --no-project python -m py_compile scripts/*.py
 
+      - name: Notes de la version du manifest (CHANGELOG)
+        run: |
+          version="$(uv run --no-project python -c 'import json; print(json.load(open("custom_components/ginko_trafic/manifest.json"))["version"])')"
+          uv run --no-project python scripts/notes_de_version.py "v${version}" > /dev/null
+
       - name: Lint et format (ruff)
         run: |
           uv run --only-group lint ruff check .

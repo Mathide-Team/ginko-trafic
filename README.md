@@ -50,6 +50,27 @@ arrêts, via l'[API open data Ginko](https://api.ginko.voyage/).
   gèrent dans les options (ajout en trois étapes : ligne, sens, arrêt ;
   suppression par désélection).
 
+## Tableau de bord
+
+Une vue prête à l'emploi est fournie dans
+[`exemples/tableau-de-bord.yaml`](exemples/tableau-de-bord.yaml) :
+
+- **bandeau d'alerte**, affiché seulement quand une ligne suivie est
+  perturbée, avec les messages d'info-trafic ;
+- **prochains passages** : tableau ligne, arrêt, direction, attente (en
+  gras, « théorique » si le véhicule n'est pas localisé) et passages
+  suivants ;
+- **info trafic** : état de chaque ligne suivie.
+
+Seules des cartes intégrées à Home Assistant sont utilisées. Les cartes
+parcourent toutes les entités de l'intégration
+(`integration_entities('ginko_trafic')`) : rien à adapter, les nouveaux
+abonnements apparaissent d'eux-mêmes.
+
+Installation : Paramètres → Tableaux de bord → ouvrir un tableau de bord
+→ ⋮ → Modifier → ⋮ → Éditeur de configuration, puis coller le contenu
+du fichier comme nouvel élément de `views:`.
+
 ## Prérequis : clé API
 
 L'API Ginko exige une **clé gratuite** : demandez-la par courriel à
