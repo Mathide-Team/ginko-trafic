@@ -128,7 +128,7 @@ d'info-trafic plus d'une minute.
 
 ## Développement
 
-Socle qualité Mathide-Team : CI (ruff, yamllint, pytest, hassfest, HACS),
+Socle qualité Mathilde-Team : CI (ruff, yamllint, pytest, hassfest, HACS),
 branches protégées `dev` → `main`.
 
 ```bash
