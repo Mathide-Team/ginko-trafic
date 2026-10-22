@@ -1,6 +1,6 @@
 [project]
 name = "ginko-trafic"
-version = "0.1.0"
+version = "0.1.1"
 description = "Infos trafic et temps d'attente Ginko (Besançon) pour Home Assistant"
 requires-python = ">=3.13.2,<3.14"
 license = "MIT"
@@ -11,6 +11,7 @@ test = [
     "pytest-homeassistant-custom-component==0.13.316",  # Home Assistant 2026.2.3, Python 3.13
 ]
 lint = ["ruff==0.17.1"]
+scripts = ["loguru==0.7.3"]  # journalisation des scripts du dépôt (SOCLE §8)
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
@@ -27,6 +28,13 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
 
 [tool.coverage.run]
 source = ["custom_components/ginko_trafic"]
+branch = true
+
+[tool.coverage.report]
+# Seuil bloquant de l'équipe (Mathilde-Team/.github#9) : lignes + branches.
+# Appliqué par `pytest --cov` (job Qualité de ci.yml).
+fail_under = 95
+show_missing = true
 
 [tool.uv]
 package = false  # intégration HA, pas un paquet Python publié

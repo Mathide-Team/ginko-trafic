@@ -1,5 +1,13 @@
 # Journal des versions
 
+## [0.1.1] — 22/10/2026
+
+- Liens et manifest corrigés après le renommage de l'organisation en
+  Mathilde-Team.
+- Journal de debug complet (SOCLE §8) : entrée et sortie de chaque
+  fonction de l'intégration tracées ; scripts journalisés avec loguru.
+- Tests : couverture 100 % lignes et branches, seuil bloquant à 95 % (#17).
+
 ## [0.1.0] — 18/10/2026
 
 - Version initiale : infos trafic et temps d'attente du réseau Ginko

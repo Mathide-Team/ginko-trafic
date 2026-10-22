@@ -230,3 +230,66 @@ async def test_messages_filtres(client: TestClient) -> None:
     assert premier.etat == 5
     assert premier.lignes == ("T9",)
     assert premier.url == "https://exemple.invalid/info/71"
+
+
+async def _client_sur_route(chemin: str, reponse: web.Response) -> TestClient:
+    """Serveur factice d'une seule route renvoyant *reponse*."""
+
+    async def route(request: web.Request) -> web.Response:
+        RECU[chemin] = dict(request.query)
+        return reponse
+
+    app = web.Application()
+    app.router.add_get(chemin, route)
+    serveur = TestClient(TestServer(app))
+    await serveur.start_server()
+    return serveur
+
+
+async def test_arrets(client: TestClient) -> None:
+    """La liste des arrêts (DR/getArrets) est lue avec identifiant et nom."""
+    arrets = await _ginko(client).async_get_arrets()
+    assert [(a.id, a.nom) for a in arrets] == [
+        ("A1", "Exemple Mairie"),
+        ("A2", "Exemple Marche"),
+        ("A3", "Exemple Nord Terminus"),
+    ]
+
+
+@pytest.mark.parametrize(
+    "corps",
+    [
+        pytest.param([1, 2], id="liste"),
+        pytest.param({"objets": []}, id="sans-ok"),
+    ],
+)
+async def test_enveloppe_inattendue(corps: object) -> None:
+    """Un JSON valide sans enveloppe ``{"ok": …}`` devient GinkoApiError."""
+    serveur = await _client_sur_route("/TR/getEtatLignes.do", web.json_response(corps))
+    try:
+        ginko = GinkoClient(serveur.session, CLE, base_url=str(serveur.make_url("/")))
+        with pytest.raises(GinkoApiError, match=r"Enveloppe inattendue de Ginko \(TR/getEtatLignes.do\)"):
+            await ginko.async_get_etat_lignes()
+    finally:
+        await serveur.close()
+    assert "/TR/getEtatLignes.do" in RECU  # la route a bien été atteinte
+
+
+async def test_refus_sans_message() -> None:
+    """Un refus sans ``msg`` garde un libellé explicite, pas une chaîne vide."""
+    serveur = await _client_sur_route("/DR/getLignes.do", web.json_response({"ok": False}))
+    try:
+        ginko = GinkoClient(serveur.session, CLE, base_url=str(serveur.make_url("/")))
+        with pytest.raises(GinkoReponseError, match=r"^requête refusée par Ginko$"):
+            await ginko.async_get_lignes()
+    finally:
+        await serveur.close()
+
+
+async def test_messages_sans_filtre(client: TestClient) -> None:
+    """Sans lignes, aucun filtre ``idLignes`` n'est envoyé (tous les messages)."""
+    messages = await _ginko(client).async_get_messages()
+    assert "idLignes" not in RECU["messages"]
+    assert len(messages) == 2
+    messages = await _ginko(client).async_get_messages([])
+    assert "idLignes" not in RECU["messages"]

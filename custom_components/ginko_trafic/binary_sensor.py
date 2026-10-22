@@ -13,7 +13,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, ETATS_PERTURBATION, LIBELLES_ETAT
+from .const import DOMAIN, ETATS_PERTURBATION, LIBELLES_ETAT, LOGGER
 from .coordinator import TraficCoordinator
 
 if TYPE_CHECKING:
@@ -26,11 +26,14 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Crée un binary sensor par ligne suivie."""
+    LOGGER.debug("async_setup_entry() (binary sensors) appelé")
     donnees = hass.data[DOMAIN][entry.entry_id]
     lignes: dict[str, object] = donnees["lignes"]
     trafic: TraficCoordinator = donnees["trafic"]
     ids_lignes = list(entry.options.get("lignes") or [])
-    async_add_entities([GinkoPerturbationEntity(trafic, lignes, str(id_ligne)) for id_ligne in ids_lignes])
+    entites = [GinkoPerturbationEntity(trafic, lignes, str(id_ligne)) for id_ligne in ids_lignes]
+    async_add_entities(entites)
+    LOGGER.debug("async_setup_entry() (binary sensors) retourne | %s entité(s)", len(entites))
 
 
 class GinkoPerturbationEntity(CoordinatorEntity[TraficCoordinator], BinarySensorEntity):
@@ -52,6 +55,7 @@ class GinkoPerturbationEntity(CoordinatorEntity[TraficCoordinator], BinarySensor
         lignes: dict[str, object],
         id_ligne: str,
     ) -> None:
+        LOGGER.debug("GinkoPerturbationEntity.__init__() appelé | ligne=%s", id_ligne)
         super().__init__(coordinator)
         self._id_ligne = id_ligne
         self._ligne = lignes.get(id_ligne)
@@ -64,21 +68,28 @@ class GinkoPerturbationEntity(CoordinatorEntity[TraficCoordinator], BinarySensor
             manufacturer="Ginko (Keolis Besançon Mobilités)",
             model="Ligne de bus/tram",
         )
+        LOGGER.debug("GinkoPerturbationEntity.__init__() retourne")
 
     def _etat_ligne(self) -> int | None:
         """État info-trafic de la ligne, None si absente de la réponse."""
+        LOGGER.debug("_etat_ligne() appelé | ligne=%s", self._id_ligne)
         # data peut être None si le premier rafraîchissement a échoué.
         for etat in (self.coordinator.data or {}).get("etats") or []:
             if etat.id_ligne == self._id_ligne:
+                LOGGER.debug("_etat_ligne() retourne l'état %s", etat.etat)
                 return etat.etat
+        LOGGER.debug("_etat_ligne() retourne None")
         return None
 
     def _messages_ligne(self) -> list[dict[str, object]]:
         """Messages d'info-trafic concernant la ligne (numéro public)."""
+        LOGGER.debug("_messages_ligne() appelé | ligne=%s", self._id_ligne)
         num = getattr(self._ligne, "num_public", None)
         if not num:
+            LOGGER.debug("_messages_ligne() retourne [] (pas de numéro public)")
             return []
         messages = (self.coordinator.data or {}).get("messages") or []
+        LOGGER.debug("_messages_ligne() retourne les messages de la ligne")
         return [
             {
                 "titre": m.titre,
@@ -92,16 +103,21 @@ class GinkoPerturbationEntity(CoordinatorEntity[TraficCoordinator], BinarySensor
     @property
     def is_on(self) -> bool | None:
         """Vrai si une perturbation concerne la ligne (prévue ou en cours)."""
+        LOGGER.debug("is_on() appelé | ligne=%s", self._id_ligne)
         etat = self._etat_ligne()
         if etat is None:
+            LOGGER.debug("is_on() retourne None")
             return None
+        LOGGER.debug("is_on() retourne %s", etat in ETATS_PERTURBATION)
         return etat in ETATS_PERTURBATION
 
     @property
     def extra_state_attributes(self) -> dict[str, object]:
         """État détaillé et messages de la ligne."""
+        LOGGER.debug("extra_state_attributes() appelé | ligne=%s", self._id_ligne)
         etat = self._etat_ligne()
         messages = self._messages_ligne()
+        LOGGER.debug("extra_state_attributes() retourne les attributs")
         return {
             "etat": LIBELLES_ETAT.get(etat, "inconnu") if etat is not None else None,
             "code_etat": etat,
