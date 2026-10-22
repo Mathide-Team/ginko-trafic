@@ -16,6 +16,7 @@ from .const import (
     ABO_ID_LIGNE,
     ABO_SENS_ALLER,
     DOMAIN,
+    LOGGER,
 )
 from .coordinator import PassagesCoordinator
 
@@ -31,17 +32,18 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Crée un capteur par abonnement de passage."""
+    LOGGER.debug("async_setup_entry() (capteurs) appelé")
     donnees = hass.data[DOMAIN][entry.entry_id]
     lignes: dict[str, object] = donnees["lignes"]
     passages: PassagesCoordinator = donnees["passages"]
     abonnements = list(entry.options.get("abonnements") or [])
-    async_add_entities(
-        [
-            GinkoProchainPassageEntity(passages, lignes, abonnement)
-            for abonnement in abonnements
-            if ABO_ARRET in abonnement and ABO_ID_LIGNE in abonnement
-        ]
-    )
+    entites = [
+        GinkoProchainPassageEntity(passages, lignes, abonnement)
+        for abonnement in abonnements
+        if ABO_ARRET in abonnement and ABO_ID_LIGNE in abonnement
+    ]
+    async_add_entities(entites)
+    LOGGER.debug("async_setup_entry() (capteurs) retourne | %s entité(s)", len(entites))
 
 
 class GinkoProchainPassageEntity(CoordinatorEntity[PassagesCoordinator], SensorEntity):
@@ -63,6 +65,7 @@ class GinkoProchainPassageEntity(CoordinatorEntity[PassagesCoordinator], SensorE
         lignes: dict[str, object],
         abonnement: dict,
     ) -> None:
+        LOGGER.debug("GinkoProchainPassageEntity.__init__() appelé | ligne=%s", abonnement.get(ABO_ID_LIGNE))
         super().__init__(coordinator)
         self._abonnement = abonnement
         self._ligne = lignes.get(str(abonnement[ABO_ID_LIGNE]))
@@ -75,11 +78,14 @@ class GinkoProchainPassageEntity(CoordinatorEntity[PassagesCoordinator], SensorE
             f"{coordinator.config_entry.entry_id}_{abonnement[ABO_ID_LIGNE]}_{sens}_{arret_slug}"
         )
         self._attr_device_info = self._informations_ligne()
+        LOGGER.debug("GinkoProchainPassageEntity.__init__() retourne")
 
     def _informations_ligne(self) -> DeviceInfo:
         """Appareil portant le nom réel de la ligne."""
+        LOGGER.debug("_informations_ligne() appelé | ligne=%s", self._abonnement[ABO_ID_LIGNE])
         num = getattr(self._ligne, "num_public", None) or str(self._abonnement[ABO_ID_LIGNE])
         libelle = getattr(self._ligne, "libelle", "") or ""
+        LOGGER.debug("_informations_ligne() retourne les infos de l'appareil")
         return DeviceInfo(
             identifiers={(DOMAIN, str(self._abonnement[ABO_ID_LIGNE]))},
             name=f"Ligne {num}" + (f" {libelle}" if libelle else ""),
@@ -93,6 +99,7 @@ class GinkoProchainPassageEntity(CoordinatorEntity[PassagesCoordinator], SensorE
         Un zéro (véhicule à l'arrêt) est une mesure valable et doit
         rester en tête : None et 0 sont distingués explicitement.
         """
+        LOGGER.debug("_temps_de_l_abonnement() appelé | arret=%s", self._abonnement[ABO_ARRET])
         resultat: list[TempsAttente] = []
         arret = str(self._abonnement[ABO_ARRET]).strip().casefold()
         for lieu in self.coordinator.data or []:
@@ -109,24 +116,31 @@ class GinkoProchainPassageEntity(CoordinatorEntity[PassagesCoordinator], SensorE
                 t.temps_en_seconde if t.temps_en_seconde is not None else 10**9,
             )
         )
+        LOGGER.debug("_temps_de_l_abonnement() retourne %s temps", len(resultat))
         return resultat
 
     def _premier_mesure(self) -> TempsAttente | None:
         """Premier passage avec durée numérique (délai ou horaire)."""
+        LOGGER.debug("_premier_mesure() appelé")
         for temps in self._temps_de_l_abonnement():
             if temps.type_de_temps == 2:  # texte : « Travaux », « Déviation »…
                 continue
             if temps.temps_en_seconde is None:
                 continue
+            LOGGER.debug("_premier_mesure() retourne un passage mesuré")
             return temps
+        LOGGER.debug("_premier_mesure() retourne None")
         return None
 
     @property
     def native_value(self) -> int | None:
         """Minutes d'attente du prochain passage mesuré, sinon None."""
+        LOGGER.debug("native_value() appelé")
         premier = self._premier_mesure()
         if premier is None:
+            LOGGER.debug("native_value() retourne None")
             return None
+        LOGGER.debug("native_value() retourne la durée d'attente")
         return max(0, round(premier.temps_en_seconde / 60))
 
     @property
@@ -137,10 +151,13 @@ class GinkoProchainPassageEntity(CoordinatorEntity[PassagesCoordinator], SensorE
         du premier passage mesuré, même si un texte de remplacement
         arrive avant dans la liste.
         """
+        LOGGER.debug("extra_state_attributes() appelé")
         liste = self._temps_de_l_abonnement()
         if not liste:
+            LOGGER.debug("extra_state_attributes() retourne l'arrêt seul")
             return {"arret": self._abonnement[ABO_ARRET]}
         premier = self._premier_mesure() or liste[0]
+        LOGGER.debug("extra_state_attributes() retourne les attributs")
         return {
             "arret": self._abonnement[ABO_ARRET],
             "destination": premier.destination,

@@ -37,7 +37,7 @@ jobs:
       - name: Notes de la version du manifest (CHANGELOG)
         run: |
           version="$(uv run --no-project python -c 'import json; print(json.load(open("custom_components/ginko_trafic/manifest.json"))["version"])')"
-          uv run --no-project python scripts/notes_de_version.py "v${version}" > /dev/null
+          uv run --group scripts python scripts/notes_de_version.py "v${version}" > /dev/null
 
       - name: Lint et format (ruff)
         run: |
@@ -45,7 +45,7 @@ jobs:
           uv run --only-group lint ruff format --check .
 
       - name: Tests (pytest, Home Assistant)
-        run: uv run -p 3.13 --only-group test pytest --cov --cov-report=term-missing
+        run: uv run -p 3.13 --group test --group scripts pytest --cov --cov-report=term-missing
 
   homeassistant:
     name: Validation Home Assistant (hassfest, HACS)

@@ -1,0 +1,3 @@
+# Total de scripts/audit_debug_sorties.py --total (issue #5, SOCLE §8).
+# Ne doit pas augmenter : le baisser après avoir instrumenté des fonctions.
+0

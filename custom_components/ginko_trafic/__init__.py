@@ -27,6 +27,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: GinkoTraficConfigEntry) 
     Un échec de la première mise à jour laisse Home Assistant retenter
     plus tard : l'entrée reste en « configuration non terminée ».
     """
+    LOGGER.debug("async_setup_entry() appelé")
     client = GinkoClient(
         async_get_clientsession(hass),
         entry.data["cle_api"],
@@ -34,6 +35,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: GinkoTraficConfigEntry) 
     try:
         lignes = {ligne.id: ligne for ligne in await client.async_get_lignes()}
     except GinkoError as erreur:
+        LOGGER.debug("lignes indisponibles au démarrage : %s", erreur)
         raise ConfigEntryNotReady(str(erreur)) from erreur
     trafic = TraficCoordinator(hass, entry, client)
     passages = PassagesCoordinator(hass, entry, client)
@@ -41,14 +43,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: GinkoTraficConfigEntry) 
     passages_prets = True
     try:
         await trafic.async_config_entry_first_refresh()
-    except ConfigEntryNotReady:
+    except ConfigEntryNotReady as erreur:
+        LOGGER.debug("premier rafraîchissement trafic impossible : %s", erreur)
         trafic_pret = False
     try:
         await passages.async_config_entry_first_refresh()
-    except ConfigEntryNotReady:
+    except ConfigEntryNotReady as erreur:
+        LOGGER.debug("premier rafraîchissement passages impossible : %s", erreur)
         passages_prets = False
     if not trafic_pret and not passages_prets:
         # Aucun flux n'a réussi : Home Assistant retentera plus tard.
+        LOGGER.debug("async_setup_entry() : aucun flux prêt, ConfigEntryNotReady")
         raise ConfigEntryNotReady
     if not trafic_pret:
         LOGGER.warning("Infos trafic indisponibles au démarrage")
@@ -62,17 +67,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: GinkoTraficConfigEntry) 
     }
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_mise_a_jour))
+    LOGGER.debug("async_setup_entry() retourne True")
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: GinkoTraficConfigEntry) -> bool:
     """Décharge les entités de l'entrée."""
+    LOGGER.debug("async_unload_entry() appelé")
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         hass.data[entry.domain].pop(entry.entry_id)
+    LOGGER.debug("async_unload_entry() retourne %s", unload_ok)
     return unload_ok
 
 
 async def _async_mise_a_jour(hass: HomeAssistant, entry: GinkoTraficConfigEntry) -> None:
     """Recharge l'entrée quand les options (abonnements) changent."""
+    LOGGER.debug("_async_mise_a_jour() appelé")
     await hass.config_entries.async_reload(entry.entry_id)
+    LOGGER.debug("_async_mise_a_jour() retourne")
