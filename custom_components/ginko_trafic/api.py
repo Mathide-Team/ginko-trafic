@@ -31,6 +31,8 @@ from typing import Any
 
 from aiohttp import ClientError, ClientResponseError, ClientSession
 
+from .const import LOGGER
+
 BASE_URL = "https://api.ginko.voyage"
 
 
@@ -205,13 +207,16 @@ class GinkoClient:
         cle_api: str,
         base_url: str | None = None,
     ) -> None:
+        LOGGER.debug("GinkoClient.__init__() appelé | url=%s", base_url or BASE_URL)
         self._session = session
         self._cle = cle_api
         # Lue à l'instanciation : les tests peuvent surcharger api.BASE_URL.
         self._base_url = (base_url or BASE_URL).rstrip("/")
+        LOGGER.debug("GinkoClient.__init__() retourne")
 
     async def _async_appel(self, chemin: str, params: dict[str, str]) -> Any:
         """Appel protégé : réseau, HTTP, JSON et enveloppe validés."""
+        LOGGER.debug("_async_appel() appelé | chemin=%s", chemin)
         url = f"{self._base_url}/{chemin}"
         parametres = {"apiKey": self._cle, **params}
         try:
@@ -219,39 +224,54 @@ class GinkoClient:
                 response.raise_for_status()
                 donnees = await response.json()
         except ClientResponseError as erreur:
+            LOGGER.debug("Ginko a répondu %s pour %s", erreur.status, chemin)
             msg = f"Ginko a répondu {erreur.status} pour {chemin}"
             raise GinkoApiError(msg) from erreur
         except (ClientError, TimeoutError) as erreur:
+            LOGGER.debug("Ginko injoignable (%s) : %s", chemin, erreur)
             msg = f"Ginko est injoignable ({chemin})"
             raise GinkoApiError(msg) from erreur
         except ValueError as erreur:
+            LOGGER.debug("réponse illisible de Ginko (%s) : %s", chemin, erreur)
             msg = f"Réponse illisible de Ginko ({chemin})"
             raise GinkoApiError(msg) from erreur
         if not isinstance(donnees, dict) or "ok" not in donnees:
+            LOGGER.debug("enveloppe inattendue de Ginko (%s)", chemin)
             msg = f"Enveloppe inattendue de Ginko ({chemin})"
             raise GinkoApiError(msg)
         if not donnees["ok"]:
+            LOGGER.debug("requête refusée par Ginko (%s) : %s", chemin, donnees.get("msg"))
             msg = str(donnees.get("msg") or "requête refusée par Ginko")
             raise GinkoReponseError(msg)
+        LOGGER.debug("_async_appel() retourne les objets (%s)", chemin)
         return donnees.get("objets")
 
     async def async_get_lignes(self) -> list[Ligne]:
         """Lignes et variantes circulant aujourd'hui (DR/getLignes)."""
+        LOGGER.debug("async_get_lignes() appelé")
         objets = await self._async_appel("DR/getLignes.do", {})
-        return [_ligne(enr) for enr in objets or []]
+        lignes = [_ligne(enr) for enr in objets or []]
+        LOGGER.debug("async_get_lignes() retourne %s ligne(s)", len(lignes))
+        return lignes
 
     async def async_get_arrets(self) -> list[Arret]:
         """Liste de tous les arrêts (DR/getArrets)."""
+        LOGGER.debug("async_get_arrets() appelé")
         objets = await self._async_appel("DR/getArrets.do", {})
-        return [_arret(enr) for enr in objets or []]
+        arrets = [_arret(enr) for enr in objets or []]
+        LOGGER.debug("async_get_arrets() retourne %s arrêt(s)", len(arrets))
+        return arrets
 
     async def async_get_details_variante(self, id_ligne: str, id_variante: str) -> list[Arret]:
         """Arrêts desservis par une variante (DR/getDetailsVariante)."""
+        LOGGER.debug("async_get_details_variante() appelé | ligne=%s variante=%s", id_ligne, id_variante)
         objets = await self._async_appel(
             "DR/getDetailsVariante.do",
             {"idLigne": id_ligne, "idVariante": id_variante},
         )
-        return [_arret(enr) for enr in objets or []]
+        arrets = [_arret(enr) for enr in objets or []]
+        LOGGER.debug("async_get_details_variante() retourne %s arrêt(s)", len(arrets))
+        return arrets
 
     async def async_get_temps(self, abonnements: list[tuple[str, str, bool]]) -> list[LieuTemps]:
         """Temps d'attente pour des abonnements (TR/getListeTemps).
@@ -261,7 +281,9 @@ class GinkoClient:
         sont envoyés en chaînes tilde-séparées, comme l'exige l'API bas
         niveau.
         """
+        LOGGER.debug("async_get_temps() appelé | %s abonnement(s)", len(abonnements or []))
         if not abonnements:
+            LOGGER.debug("async_get_temps() retourne [] (aucun abonnement)")
             return []
         noms = "~".join(a[0] for a in abonnements)
         lignes = "~".join(a[1] for a in abonnements)
@@ -280,12 +302,14 @@ class GinkoClient:
                     longitude=lieu.get("longitude") or None,
                 )
             )
+        LOGGER.debug("async_get_temps() retourne %s lieu(x)", len(lieux))
         return lieux
 
     async def async_get_etat_lignes(self) -> list[EtatLigne]:
         """État info-trafic de chaque ligne (TR/getEtatLignes)."""
+        LOGGER.debug("async_get_etat_lignes() appelé")
         objets = await self._async_appel("TR/getEtatLignes.do", {})
-        return [
+        etats = [
             EtatLigne(
                 id_ligne=str(enr.get("idLigne") or ""),
                 num_ligne_public=enr.get("numLignePublic") or "",
@@ -293,11 +317,16 @@ class GinkoClient:
             )
             for enr in objets or []
         ]
+        LOGGER.debug("async_get_etat_lignes() retourne %s ligne(s)", len(etats))
+        return etats
 
     async def async_get_messages(self, id_lignes: list[str] | None = None) -> list[Message]:
         """Messages d'info-trafic (TR/getMessages), filtrés par lignes."""
+        LOGGER.debug("async_get_messages() appelé | %s ligne(s)", len(id_lignes or []))
         params: dict[str, str] = {}
         if id_lignes:
             params["idLignes"] = "~".join(id_lignes)
         objets = await self._async_appel("TR/getMessages.do", params)
-        return [_message(enr) for enr in objets or []]
+        messages = [_message(enr) for enr in objets or []]
+        LOGGER.debug("async_get_messages() retourne %s message(s)", len(messages))
+        return messages
