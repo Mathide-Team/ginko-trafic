@@ -11,6 +11,7 @@ test = [
     "pytest-homeassistant-custom-component==0.13.316",  # Home Assistant 2026.2.3, Python 3.13
 ]
 lint = ["ruff==0.17.1"]
+scripts = ["loguru==0.7.3"]  # journalisation des scripts du dépôt (SOCLE §8)
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

@@ -40,4 +40,4 @@ jobs:
       - name: Comparaison avec .github/branch-protection/${{ matrix.branche }}.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: uv run --no-project python scripts/check_branch_protection.py --branche ${{ matrix.branche }}
+        run: uv run --group scripts python scripts/check_branch_protection.py --branche ${{ matrix.branche }}
