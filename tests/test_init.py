@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 from aiohttp import web
 from aiohttp.test_utils import TestClient, TestServer
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -349,3 +350,199 @@ async def test_panne_trafic_sans_perte_passages(hass: HomeAssistant, client: Tes
             assert _tram().attributes["etat"] == "perturbation en cours"
         finally:
             await serveur.close()
+
+
+def _app_sur_mesure(**surcharges) -> web.Application:
+    """Serveur factice Ginko dont certaines routes sont remplacées.
+
+    *surcharges* associe un nom de route (``getLignes``…) à un gestionnaire ;
+    les autres routes renvoient les fixtures habituelles.
+    """
+    routes = {
+        "DR/getLignes": lambda r: _reponse("lignes.json"),
+        "DR/getDetailsVariante": lambda r: _reponse("details_variante.json"),
+        "TR/getListeTemps": lambda r: _reponse("liste_temps.json"),
+        "TR/getEtatLignes": lambda r: _reponse("etat_lignes.json"),
+        "TR/getMessages": lambda r: _reponse("messages.json"),
+    }
+    for nom, gestionnaire in surcharges.items():
+        cle = next(c for c in routes if c.endswith("/" + nom))
+        routes[cle] = gestionnaire
+    app = web.Application()
+    for chemin, gestionnaire in routes.items():
+
+        async def route(request: web.Request, _g=gestionnaire) -> web.Response:
+            return _g(request)
+
+        app.router.add_get(f"/{chemin}.do", route)
+    return app
+
+
+async def _entree_sur_serveur(hass: HomeAssistant, serveur: TestClient, options: dict) -> MockConfigEntry:
+    """Ajoute l'entrée et tente sa configuration (sans exiger le succès)."""
+    entry = MockConfigEntry(domain=DOMAIN, data={"cle_api": CLE}, options=options, unique_id="reseau-ginko")
+    entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    return entry
+
+
+ABONNEMENT_MAIRIE = {"arret": "Exemple Mairie", "id_ligne": LIGNE_TRAM, "sens_aller": True}
+REFUS = {"ok": False, "msg": "quota dépassé"}
+
+
+async def test_lignes_indisponibles_au_demarrage(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Sans la liste des lignes, l'entrée reste à retenter (pas d'entités vides)."""
+    serveur = TestClient(TestServer(_app_sur_mesure(getLignes=lambda r: web.Response(status=500))))
+    await serveur.start_server()
+    monkeypatch.setattr("custom_components.ginko_trafic.api.BASE_URL", str(serveur.make_url("/")))
+    try:
+        entry = await _entree_sur_serveur(hass, serveur, {"lignes": [LIGNE_TRAM]})
+        assert entry.state is ConfigEntryState.SETUP_RETRY
+        assert hass.states.async_entity_ids("binary_sensor") == []
+    finally:
+        await serveur.close()
+
+
+async def test_tous_les_flux_en_panne(hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Trafic et passages en échec au démarrage : l'entrée reste à retenter."""
+    panne = lambda r: web.Response(status=500)  # noqa: E731
+    serveur = TestClient(TestServer(_app_sur_mesure(getEtatLignes=panne, getListeTemps=panne)))
+    await serveur.start_server()
+    monkeypatch.setattr("custom_components.ginko_trafic.api.BASE_URL", str(serveur.make_url("/")))
+    try:
+        entry = await _entree_sur_serveur(
+            hass, serveur, {"lignes": [LIGNE_TRAM], "abonnements": [ABONNEMENT_MAIRIE]}
+        )
+        assert entry.state is ConfigEntryState.SETUP_RETRY
+        assert DOMAIN not in hass.data or entry.entry_id not in hass.data[DOMAIN]
+    finally:
+        await serveur.close()
+
+
+async def test_requetes_refusees_par_ginko(hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Un refus applicatif (``ok: false``) des deux flux rend les entités indisponibles.
+
+    Distinct d'une panne réseau : le message « refusée » est remonté par le
+    coordinateur (UpdateFailed), et l'entrée reste à retenter puisque aucun
+    flux n'a réussi.
+    """
+    refus = lambda r: web.json_response(REFUS)  # noqa: E731
+    serveur = TestClient(TestServer(_app_sur_mesure(getEtatLignes=refus, getListeTemps=refus)))
+    await serveur.start_server()
+    monkeypatch.setattr("custom_components.ginko_trafic.api.BASE_URL", str(serveur.make_url("/")))
+    try:
+        entry = await _entree_sur_serveur(
+            hass, serveur, {"lignes": [LIGNE_TRAM], "abonnements": [ABONNEMENT_MAIRIE]}
+        )
+        assert entry.state is ConfigEntryState.SETUP_RETRY
+    finally:
+        await serveur.close()
+
+
+async def test_refus_trafic_seul(hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Refus du flux trafic seul : passages disponibles, perturbation indisponible."""
+    hass.config.language = "fr"
+    serveur = TestClient(TestServer(_app_sur_mesure(getEtatLignes=lambda r: web.json_response(REFUS))))
+    await serveur.start_server()
+    monkeypatch.setattr("custom_components.ginko_trafic.api.BASE_URL", str(serveur.make_url("/")))
+    try:
+        entry = await _entree_sur_serveur(
+            hass, serveur, {"lignes": [LIGNE_TRAM], "abonnements": [ABONNEMENT_MAIRIE]}
+        )
+        assert entry.state is ConfigEntryState.LOADED
+        assert _etat(hass, "_passage_exemple_mairie_aller").state == "3"
+        assert _etat(hass, "_perturbation").state == "unavailable"
+        trafic = hass.data[DOMAIN][entry.entry_id]["trafic"]
+        assert trafic.last_update_success is False
+        assert "Requête trafic refusée : quota dépassé" in str(trafic.last_exception)
+    finally:
+        await serveur.close()
+
+
+async def test_refus_passages_seul(hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Refus du flux passages seul : perturbations disponibles, passage indisponible."""
+    hass.config.language = "fr"
+    serveur = TestClient(TestServer(_app_sur_mesure(getListeTemps=lambda r: web.json_response(REFUS))))
+    await serveur.start_server()
+    monkeypatch.setattr("custom_components.ginko_trafic.api.BASE_URL", str(serveur.make_url("/")))
+    try:
+        entry = await _entree_sur_serveur(
+            hass, serveur, {"lignes": [LIGNE_TRAM], "abonnements": [ABONNEMENT_MAIRIE]}
+        )
+        assert entry.state is ConfigEntryState.LOADED
+        assert _etat(hass, "_perturbation").state == "on"
+        assert _etat(hass, "_passage_exemple_mairie_aller").state == "unavailable"
+        passages = hass.data[DOMAIN][entry.entry_id]["passages"]
+        assert "Requête passages refusée : quota dépassé" in str(passages.last_exception)
+    finally:
+        await serveur.close()
+
+
+async def test_ligne_suivie_absente_du_jour(hass: HomeAssistant, client: TestClient) -> None:
+    """Une ligne suivie absente du jour : capteur créé, état inconnu, aucun message."""
+    hass.config.language = "fr"
+    await _demarrer(hass, client, {"lignes": ["999"]})
+    capteur = next(
+        hass.states.get(e)
+        for e in hass.states.async_entity_ids("binary_sensor")
+        if e.endswith("_perturbation")
+    )
+    assert capteur.state == "unknown"  # ni « on » ni « off » : aucun état connu
+    assert capteur.attributes["messages"] == []
+
+
+async def test_passage_sans_duree_numerique(hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Un délai annoncé sans durée en secondes n'est pas pris pour une mesure."""
+    liste = json.loads(_lire("liste_temps.json"))
+    mairie = liste["objets"][0]
+    # Seuls passages T9 aller à Exemple Mairie : délai (type 0) sans secondes.
+    for temps in mairie["listeTemps"]:
+        if temps["idLigne"] == LIGNE_TRAM:
+            temps["tempsEnSeconde"] = None
+    serveur = TestClient(TestServer(_app_sur_mesure(getListeTemps=lambda r: web.json_response(liste))))
+    await serveur.start_server()
+    monkeypatch.setattr("custom_components.ginko_trafic.api.BASE_URL", str(serveur.make_url("/")))
+    try:
+        await _entree_sur_serveur(hass, serveur, {"lignes": [], "abonnements": [ABONNEMENT_MAIRIE]})
+        assert _etat(hass, "_passage_exemple_mairie_aller").state == "unknown"
+    finally:
+        await serveur.close()
+
+
+async def test_dechargement_et_echec(
+    hass: HomeAssistant, client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Un déchargement refusé par une plateforme garde les données de l'entrée."""
+    entry = await _demarrer(hass, client, {"lignes": [LIGNE_TRAM]})
+
+    async def refuse(*args, **kwargs) -> bool:
+        return False
+
+    with monkeypatch.context() as patch:
+        patch.setattr(hass.config_entries, "async_unload_platforms", refuse)
+        assert await hass.config_entries.async_unload(entry.entry_id) is False
+    assert entry.entry_id in hass.data[DOMAIN]
+    assert entry.state is ConfigEntryState.FAILED_UNLOAD
+
+
+async def test_options_rechargent_l_entree(hass: HomeAssistant, client: TestClient) -> None:
+    """Changer les options recharge l'entrée : la nouvelle ligne a son capteur."""
+    hass.config.language = "fr"
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr("custom_components.ginko_trafic.api.BASE_URL", str(client.make_url("/")))
+        entry = MockConfigEntry(
+            domain=DOMAIN, data={"cle_api": CLE}, options={"lignes": [LIGNE_TRAM]}, unique_id="reseau-ginko"
+        )
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        avant = [e for e in hass.states.async_entity_ids("binary_sensor") if e.endswith("_perturbation")]
+        assert len(avant) == 1
+        hass.config_entries.async_update_entry(entry, options={"lignes": [LIGNE_TRAM, LIGNE_BUS]})
+        await hass.async_block_till_done()
+        apres = [e for e in hass.states.async_entity_ids("binary_sensor") if e.endswith("_perturbation")]
+        assert len(apres) == 2
+        assert entry.state is ConfigEntryState.LOADED
