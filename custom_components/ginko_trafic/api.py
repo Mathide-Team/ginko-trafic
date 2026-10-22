@@ -224,24 +224,24 @@ class GinkoClient:
                 response.raise_for_status()
                 donnees = await response.json()
         except ClientResponseError as erreur:
-            LOGGER.debug("Ginko a répondu %s pour %s", erreur.status, chemin)
             msg = f"Ginko a répondu {erreur.status} pour {chemin}"
+            LOGGER.debug("Ginko a répondu %s pour %s", erreur.status, chemin)
             raise GinkoApiError(msg) from erreur
         except (ClientError, TimeoutError) as erreur:
-            LOGGER.debug("Ginko injoignable (%s) : %s", chemin, erreur)
             msg = f"Ginko est injoignable ({chemin})"
+            LOGGER.debug("Ginko injoignable (%s) : %s", chemin, erreur)
             raise GinkoApiError(msg) from erreur
         except ValueError as erreur:
-            LOGGER.debug("réponse illisible de Ginko (%s) : %s", chemin, erreur)
             msg = f"Réponse illisible de Ginko ({chemin})"
+            LOGGER.debug("réponse illisible de Ginko (%s) : %s", chemin, erreur)
             raise GinkoApiError(msg) from erreur
         if not isinstance(donnees, dict) or "ok" not in donnees:
-            LOGGER.debug("enveloppe inattendue de Ginko (%s)", chemin)
             msg = f"Enveloppe inattendue de Ginko ({chemin})"
+            LOGGER.debug("enveloppe inattendue de Ginko (%s)", chemin)
             raise GinkoApiError(msg)
         if not donnees["ok"]:
-            LOGGER.debug("requête refusée par Ginko (%s) : %s", chemin, donnees.get("msg"))
             msg = str(donnees.get("msg") or "requête refusée par Ginko")
+            LOGGER.debug("requête refusée par Ginko (%s) : %s", chemin, donnees.get("msg"))
             raise GinkoReponseError(msg)
         LOGGER.debug("_async_appel() retourne les objets (%s)", chemin)
         return donnees.get("objets")

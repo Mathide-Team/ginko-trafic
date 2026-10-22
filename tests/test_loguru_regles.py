@@ -403,6 +403,20 @@ class TestDetecteurs(unittest.TestCase):
         for source in sources:
             self.assertEqual([p for _, _, p in audit.audit_source(source)], [["sortie"]])
 
+    def test_audit_raise_sans_trace(self):
+        """Raise volontaire non précédé d'un appel de journal : écart de sortie."""
+        audit = _audit()
+        source = "def ko(x):\n    logger.debug('in')\n    y = x\n    raise ValueError('boom')\n"
+        self.assertEqual([p for _, _, p in audit.audit_source(source)], [["sortie"]])
+        source_conforme = (
+            "def ok(x):\n"
+            "    logger.debug('in')\n"
+            "    y = x\n"
+            "    logger.debug('sortie: raise')\n"
+            "    raise ValueError('boom')\n"
+        )
+        self.assertEqual(audit.audit_source(source_conforme), [])
+
     def test_audit_try_except_en_fin(self):
         """try/except muet en fin de fonction : sortie non tracée."""
         audit = _audit()

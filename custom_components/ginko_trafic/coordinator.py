@@ -55,12 +55,12 @@ class TraficCoordinator(DataUpdateCoordinator[dict[str, object]]):
             etats: list[EtatLigne] = await self._client.async_get_etat_lignes()
             messages: list[Message] = await self._client.async_get_messages(self._id_lignes or None)
         except GinkoApiError as erreur:
-            LOGGER.debug("mise à jour du trafic impossible : %s", erreur)
             msg = f"Mise à jour du trafic impossible : {erreur}"
+            LOGGER.debug("mise à jour du trafic impossible : %s", erreur)
             raise UpdateFailed(msg) from erreur
         except GinkoError as erreur:
-            LOGGER.debug("requête trafic refusée : %s", erreur)
             msg = f"Requête trafic refusée : {erreur}"
+            LOGGER.debug("requête trafic refusée : %s", erreur)
             raise UpdateFailed(msg) from erreur
         LOGGER.debug("_async_update_data() (trafic) retourne %s état(s)", len(etats))
         return {"etats": etats, "messages": messages}
@@ -108,12 +108,12 @@ class PassagesCoordinator(DataUpdateCoordinator[list[LieuTemps]]):
         try:
             lieux = await self._client.async_get_temps(self._triplets())
         except GinkoApiError as erreur:
-            LOGGER.debug("mise à jour des passages impossible : %s", erreur)
             msg = f"Mise à jour des passages impossible : {erreur}"
+            LOGGER.debug("mise à jour des passages impossible : %s", erreur)
             raise UpdateFailed(msg) from erreur
         except GinkoError as erreur:
-            LOGGER.debug("requête passages refusée : %s", erreur)
             msg = f"Requête passages refusée : {erreur}"
+            LOGGER.debug("requête passages refusée : %s", erreur)
             raise UpdateFailed(msg) from erreur
         LOGGER.debug("_async_update_data() (passages) retourne %s lieu(x)", len(lieux))
         return lieux

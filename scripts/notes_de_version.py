@@ -17,45 +17,45 @@ RACINE = Path(__file__).resolve().parents[1]
 
 
 def version_manifest() -> str:
-    logger.debug("version_manifest() called")
+    logger.debug("version_manifest() appelée")
     version = json.loads(
         (RACINE / "custom_components/ginko_trafic/manifest.json").read_text(encoding="utf-8")
     )["version"]
-    logger.debug("version_manifest() returning | {}", version)
+    logger.debug("version_manifest() retourne | {}", version)
     return version
 
 
 def notes(version: str, journal: str) -> str:
     """Section ``## [version]`` du journal, sans son titre."""
-    logger.debug("notes() called | version={}", version)
+    logger.debug("notes() appelée | version={}", version)
     motif = re.compile(rf"^## \[{re.escape(version)}\].*?$(.*?)(?=^## \[|\Z)", re.MULTILINE | re.DOTALL)
     trouve = motif.search(journal)
     if trouve is None or not trouve.group(1).strip():
         logger.error("version {} absente de CHANGELOG.md", version)
         raise ValueError(f"version {version} absente de CHANGELOG.md")
     texte = trouve.group(1).strip() + "\n"
-    logger.debug("notes() returning | {} caractère(s)", len(texte))
+    logger.debug("notes() retourne | {} caractère(s)", len(texte))
     return texte
 
 
 def main(argv: list[str]) -> int:
-    logger.debug("main() called | {} argument(s)", len(argv))
+    logger.debug("main() appelée | {} argument(s)", len(argv))
     if len(argv) != 2:
         print(__doc__, file=sys.stderr)
-        logger.debug("main() returning | 2 (arguments incorrects)")
+        logger.debug("main() retourne | 2 (arguments incorrects)")
         return 2
     version = argv[1].removeprefix("v")
     if version != version_manifest():
         print(f"tag v{version} ≠ manifest.json {version_manifest()}", file=sys.stderr)
-        logger.debug("main() returning | 1 (tag ≠ manifest)")
+        logger.debug("main() retourne | 1 (tag ≠ manifest)")
         return 1
     try:
         sys.stdout.write(notes(version, (RACINE / "CHANGELOG.md").read_text(encoding="utf-8")))
     except ValueError as err:
         print(err, file=sys.stderr)
-        logger.debug("main() returning | 1 (version absente du journal)")
+        logger.debug("main() retourne | 1 : {}", err)
         return 1
-    logger.debug("main() returning | 0")
+    logger.debug("main() retourne | 0")
     return 0
 
 
