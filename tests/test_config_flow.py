@@ -293,3 +293,73 @@ async def test_options_ajout_panne_arret(
         ]
     finally:
         await serveur.close()
+
+
+async def test_flux_configuration_reseau_injoignable(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ginko injoignable à la saisie de la clé : erreur générale, pas « clé invalide »."""
+    monkeypatch.setattr("custom_components.ginko_trafic.api.BASE_URL", "http://127.0.0.1:1/")
+    resultat = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
+    resultat = await hass.config_entries.flow.async_configure(resultat["flow_id"], {"cle_api": CLE})
+    assert resultat["type"] is FlowResultType.FORM
+    assert resultat["step_id"] == "user"
+    assert resultat["errors"] == {"base": "cannot_connect"}
+
+
+async def test_options_api_indisponible(hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch) -> None:
+    """API indisponible : seules les lignes déjà suivies sont proposées, et restent conservées."""
+    hass.config.language = "fr"
+    monkeypatch.setattr("custom_components.ginko_trafic.api.BASE_URL", "http://127.0.0.1:1/")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={"cle_api": CLE},
+        options={"lignes": ["901"], "abonnements": []},
+        unique_id="reseau-ginko",
+    )
+    entry.add_to_hass(hass)
+    resultat = await _options_init(hass, entry)
+    assert resultat["type"] is FlowResultType.FORM
+    cle = next(k for k in resultat["data_schema"].schema if str(k).endswith("lignes"))
+    assert resultat["data_schema"].schema[cle].options == {"901": "901"}
+    resultat = await hass.config_entries.options.async_configure(
+        resultat["flow_id"], {"lignes": ["901"], "abonnements": [], "ajouter": False}
+    )
+    await hass.async_block_till_done()
+    assert resultat["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options == {"lignes": ["901"], "abonnements": []}
+
+
+async def test_options_ajout_ligne_sans_variante(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Une ligne du jour sans aucune variante (sens) ne peut pas être abonnée."""
+    hass.config.language = "fr"
+    lignes = json.loads(_lire("lignes.json"))
+    sans_variante = dict(lignes["objets"][1], id="903", numLignePublic="99", variantes=[])
+    lignes["objets"].append(sans_variante)
+    app = web.Application()
+    app.router.add_get("/DR/getLignes.do", lambda r: web.json_response(lignes))
+    serveur = TestClient(TestServer(app))
+    await serveur.start_server()
+    monkeypatch.setattr("custom_components.ginko_trafic.api.BASE_URL", str(serveur.make_url("/")))
+    try:
+        entry = MockConfigEntry(
+            domain=DOMAIN,
+            data={"cle_api": CLE},
+            options={"lignes": ["901"], "abonnements": []},
+            unique_id="reseau-ginko",
+        )
+        entry.add_to_hass(hass)
+        resultat = await _options_init(hass, entry)
+        resultat = await hass.config_entries.options.async_configure(
+            resultat["flow_id"], {"lignes": ["901"], "abonnements": [], "ajouter": True}
+        )
+        assert resultat["step_id"] == "abonnement_ligne"
+        resultat = await hass.config_entries.options.async_configure(resultat["flow_id"], {"ligne": "903"})
+        assert resultat["type"] is FlowResultType.FORM
+        assert resultat["step_id"] == "abonnement_ligne"
+        assert resultat["errors"] == {"ligne": "lignes_indisponibles"}
+        assert entry.options == {"lignes": ["901"], "abonnements": []}  # rien n'a changé
+    finally:
+        await serveur.close()
